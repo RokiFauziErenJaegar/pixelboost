@@ -1,0 +1,23 @@
+{
+  "name": "pixelboost",
+  "version": "1.0.0",
+  "description": "Upscale & perjelas banyak foto sekaligus tanpa batas — 100% di browser, tanpa upload.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "image",
+    "upscale",
+    "super-resolution",
+    "batch",
+    "enhance",
+    "sharpen",
+    "browser",
+    "canvas",
+    "privacy"
+  ],
+  "author": "RokiFauziErenJaegar",
+  "license": "MIT"
+}

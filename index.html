@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="PixelBoost — Upscale & perjelas banyak foto sekaligus, langsung di browser, tanpa batas dan tanpa upload." />
+  <title>PixelBoost · Upscale Foto Tanpa Batas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+  </div>
+
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-mark">✨</span>
+      <span class="brand-name">Pixel<span class="accent">Boost</span></span>
+    </div>
+    <nav class="header-meta">
+      <span class="badge">100% di Browser</span>
+      <span class="badge">Tanpa Upload</span>
+      <span class="badge">Tanpa Batas</span>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Upscale &amp; Perjelas Foto <span class="gradient-text">Tanpa Batas</span></h1>
+      <p class="subtitle">
+        Tingkatkan resolusi dan ketajaman banyak foto sekaligus — hingga <b>8×</b>.
+        Semua diproses langsung di perangkatmu, jadi foto tidak pernah diupload ke server mana pun.
+      </p>
+    </section>
+
+    <!-- Dropzone -->
+    <section id="dropzone" class="dropzone" tabindex="0" aria-label="Area unggah foto">
+      <input type="file" id="fileInput" accept="image/*" multiple hidden />
+      <div class="dropzone-inner">
+        <div class="drop-icon">🖼️</div>
+        <h2>Tarik &amp; lepas foto di sini</h2>
+        <p>atau <button type="button" id="browseBtn" class="link-btn">pilih dari perangkat</button> — sebanyak yang kamu mau</p>
+        <p class="hint">JPG · PNG · WEBP · BMP — diproses lokal, aman &amp; privat</p>
+      </div>
+    </section>
+
+    <!-- Control Panel -->
+    <section class="controls" id="controls" hidden>
+      <div class="control-grid">
+        <div class="control-card">
+          <label class="control-label" for="scale">Faktor Upscale</label>
+          <div class="seg" id="scaleSeg" role="group" aria-label="Faktor upscale">
+            <button data-scale="2" class="seg-btn active">2×</button>
+            <button data-scale="3" class="seg-btn">3×</button>
+            <button data-scale="4" class="seg-btn">4×</button>
+            <button data-scale="6" class="seg-btn">6×</button>
+            <button data-scale="8" class="seg-btn">8×</button>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <label class="control-label" for="sharpen">Ketajaman <span class="val" id="sharpenVal">60%</span></label>
+          <input type="range" id="sharpen" min="0" max="100" value="60" />
+          <span class="control-sub">Mempertegas detail &amp; tepi objek</span>
+        </div>
+
+        <div class="control-card">
+          <label class="control-label" for="denoise">Reduksi Noise <span class="val" id="denoiseVal">25%</span></label>
+          <input type="range" id="denoise" min="0" max="100" value="25" />
+          <span class="control-sub">Menghaluskan bintik &amp; grain</span>
+        </div>
+
+        <div class="control-card">
+          <label class="control-label" for="contrast">Kontras &amp; Warna <span class="val" id="contrastVal">15%</span></label>
+          <input type="range" id="contrast" min="0" max="100" value="15" />
+          <span class="control-sub">Membuat foto lebih hidup &amp; jelas</span>
+        </div>
+
+        <div class="control-card">
+          <label class="control-label" for="format">Format Hasil</label>
+          <select id="format" class="select">
+            <option value="image/png">PNG (kualitas terbaik)</option>
+            <option value="image/jpeg" selected>JPG (ukuran ringan)</option>
+            <option value="image/webp">WEBP (modern)</option>
+          </select>
+        </div>
+
+        <div class="control-card">
+          <label class="control-label">
+            <input type="checkbox" id="autoLevels" checked />
+            Auto Levels
+          </label>
+          <span class="control-sub">Otomatis menyeimbangkan terang–gelap</span>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button id="processBtn" class="btn btn-primary">⚡ Upscale Semua</button>
+        <button id="downloadAllBtn" class="btn btn-ghost" disabled>⬇️ Unduh Semua (ZIP)</button>
+        <button id="addMoreBtn" class="btn btn-ghost">＋ Tambah Foto</button>
+        <button id="clearBtn" class="btn btn-danger">🗑️ Bersihkan</button>
+        <div class="queue-stat" id="queueStat"></div>
+      </div>
+
+      <div class="progress-wrap" id="progressWrap" hidden>
+        <div class="progress-bar"><span id="progressFill"></span></div>
+        <span class="progress-label" id="progressLabel"></span>
+      </div>
+    </section>
+
+    <!-- Gallery -->
+    <section class="gallery" id="gallery"></section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Dibuat dengan ❤️ · Diproses sepenuhnya di browser-mu — privasimu terjaga.</p>
+  </footer>
+
+  <!-- Compare modal -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-body">
+      <button class="modal-close" data-close aria-label="Tutup">✕</button>
+      <h3 id="modalTitle">Bandingkan</h3>
+      <div class="compare" id="compare">
+        <img id="compareImg" alt="Pratinjau hasil" />
+        <input type="range" id="compareSlider" min="0" max="100" value="50" />
+        <div class="compare-labels"><span>Asli</span><span>Hasil</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="zip.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
