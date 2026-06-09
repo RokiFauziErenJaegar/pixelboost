@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="PixelBoost — Upscale & perjelas banyak foto sekaligus, langsung di browser, tanpa batas dan tanpa upload." />
-  <title>PixelBoost · Upscale Foto Tanpa Batas</title>
+  <meta name="description" content="PixelBoost — Perbaiki & perjelas kualitas banyak foto sekaligus dengan AI, langsung di browser, tanpa batas dan tanpa upload." />
+  <title>PixelBoost · Perbaiki Kualitas Foto dengan AI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -24,6 +24,7 @@
       <span class="brand-name">Pixel<span class="accent">Boost</span></span>
     </div>
     <nav class="header-meta">
+      <span class="badge">Bertenaga AI</span>
       <span class="badge">100% di Browser</span>
       <span class="badge">Tanpa Upload</span>
       <span class="badge">Tanpa Batas</span>
@@ -32,10 +33,11 @@
 
   <main>
     <section class="hero">
-      <h1>Upscale &amp; Perjelas Foto <span class="gradient-text">Tanpa Batas</span></h1>
+      <h1>Perbaiki Kualitas Foto <span class="gradient-text">dengan AI</span></h1>
       <p class="subtitle">
-        Tingkatkan resolusi dan ketajaman banyak foto sekaligus — hingga <b>8×</b>.
-        Semua diproses langsung di perangkatmu, jadi foto tidak pernah diupload ke server mana pun.
+        Buat foto buram jadi <b>jernih &amp; tajam</b> — AI merekonstruksi detail yang hilang,
+        bukan sekadar memperbesar. Proses banyak foto sekaligus, langsung di perangkatmu,
+        tanpa pernah diupload ke server mana pun.
       </p>
     </section>
 
@@ -53,15 +55,17 @@
     <!-- Control Panel -->
     <section class="controls" id="controls" hidden>
       <div class="control-grid">
-        <div class="control-card">
-          <label class="control-label" for="scale">Faktor Upscale</label>
-          <div class="seg" id="scaleSeg" role="group" aria-label="Faktor upscale">
-            <button data-scale="2" class="seg-btn active">2×</button>
-            <button data-scale="3" class="seg-btn">3×</button>
-            <button data-scale="4" class="seg-btn">4×</button>
-            <button data-scale="6" class="seg-btn">6×</button>
-            <button data-scale="8" class="seg-btn">8×</button>
+        <div class="control-card control-card-wide">
+          <label class="control-label">Mode Perbaikan
+            <span class="engine-status" id="engineStatus">AI siap</span>
+          </label>
+          <div class="seg" id="modeSeg" role="group" aria-label="Mode perbaikan">
+            <button data-engine="ai" data-scale="2" class="seg-btn active">🧠 AI 2×</button>
+            <button data-engine="ai" data-scale="4" class="seg-btn">🧠 AI 4×</button>
+            <button data-engine="fast" data-scale="2" class="seg-btn">⚡ Cepat 2×</button>
+            <button data-engine="fast" data-scale="4" class="seg-btn">⚡ Cepat 4×</button>
           </div>
+          <span class="control-sub" id="modeHint">AI merekonstruksi detail &amp; menghilangkan buram (butuh internet saat pertama memuat model ±5&nbsp;MB, lalu tersimpan offline).</span>
         </div>
 
         <div class="control-card">
@@ -101,7 +105,7 @@
       </div>
 
       <div class="action-bar">
-        <button id="processBtn" class="btn btn-primary">⚡ Upscale Semua</button>
+        <button id="processBtn" class="btn btn-primary">✨ Perbaiki Semua</button>
         <button id="downloadAllBtn" class="btn btn-ghost" disabled>⬇️ Unduh Semua (ZIP)</button>
         <button id="addMoreBtn" class="btn btn-ghost">＋ Tambah Foto</button>
         <button id="clearBtn" class="btn btn-danger">🗑️ Bersihkan</button>
@@ -119,7 +123,7 @@
   </main>
 
   <footer class="site-footer">
-    <p>Dibuat dengan ❤️ · Diproses sepenuhnya di browser-mu — privasimu terjaga.</p>
+    <p>Dibuat dengan ❤️ · AI berjalan sepenuhnya di browser-mu — fotomu tak pernah diupload, privasimu terjaga.</p>
   </footer>
 
   <!-- Compare modal -->
@@ -136,7 +140,13 @@
     </div>
   </div>
 
+  <!-- AI engine: TensorFlow.js + UpscalerJS (ESRGAN). Loaded lazily; app falls back to the
+       classic pipeline if these are unavailable (e.g. offline first run). -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@upscalerjs/default-model@1.0.0/dist/umd/index.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/upscaler@1.0.0/dist/browser/umd/upscaler.min.js"></script>
+
   <script src="zip.js"></script>
-  <script src="app.js"></script>
+  <script defer src="app.js"></script>
 </body>
 </html>

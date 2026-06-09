@@ -102,6 +102,15 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 clamp(18px, 5vw, 56px) 80px
 .control-label { font-weight: 600; font-size: 0.92rem; display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .control-label .val { color: var(--accent-2); font-variant-numeric: tabular-nums; }
 .control-sub { font-size: 0.78rem; color: var(--text-dim); }
+.control-card-wide { grid-column: 1 / -1; }
+@media (min-width: 760px) { .control-card-wide { grid-column: span 2; } }
+
+.engine-status {
+  font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  background: rgba(46,230,166,0.14); color: var(--good); border: 1px solid rgba(46,230,166,0.3);
+}
+.engine-status.loading { background: rgba(33,212,253,0.14); color: var(--accent-2); border-color: rgba(33,212,253,0.3); }
+.engine-status.fallback { background: rgba(255,179,71,0.14); color: #ffb347; border-color: rgba(255,179,71,0.3); }
 
 .seg { display: flex; gap: 6px; background: rgba(0,0,0,0.25); padding: 4px; border-radius: 12px; }
 .seg-btn {

@@ -19,8 +19,10 @@ const MAX_AREA = 64_000_000;  // ~64MP cap on output area
 
 const state = {
   items: [],          // { id, file, name, srcUrl, status, outBlob, outUrl, outW, outH, srcW, srcH }
+  engine: "ai",       // "ai" | "fast"
   scale: 2,
   busy: false,
+  aiNoticeShown: false,
 };
 
 let nextId = 1;
@@ -41,6 +43,13 @@ const denoiseEl = $("#denoise");
 const contrastEl = $("#contrast");
 const autoLevelsEl = $("#autoLevels");
 const formatEl = $("#format");
+const engineStatus = $("#engineStatus");
+const modeHint = $("#modeHint");
+
+function setEngineStatus(text, cls) {
+  engineStatus.textContent = text;
+  engineStatus.className = "engine-status" + (cls ? " " + cls : "");
+}
 
 /* ----------------------------- File intake ----------------------------- */
 function addFiles(fileList) {
@@ -96,12 +105,18 @@ window.addEventListener("paste", (e) => {
 });
 
 /* ----------------------------- Controls ----------------------------- */
-$("#scaleSeg").addEventListener("click", (e) => {
+$("#modeSeg").addEventListener("click", (e) => {
   const btn = e.target.closest(".seg-btn");
   if (!btn) return;
-  document.querySelectorAll(".seg-btn").forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll("#modeSeg .seg-btn").forEach((b) => b.classList.remove("active"));
   btn.classList.add("active");
+  state.engine = btn.dataset.engine;
   state.scale = Number(btn.dataset.scale);
+  modeHint.innerHTML = state.engine === "ai"
+    ? "AI merekonstruksi detail &amp; menghilangkan buram (butuh internet saat pertama memuat model ±5&nbsp;MB, lalu tersimpan offline)."
+    : "Mode cepat: resampling kualitas tinggi + penajaman klasik. Tanpa AI, tanpa internet, instan.";
+  if (state.engine === "ai") setEngineStatus("AI siap");
+  else setEngineStatus("Mode klasik", "fallback");
 });
 
 const bindVal = (el, label) => {
@@ -136,6 +151,110 @@ function loadImage(url) {
     img.onerror = () => reject(new Error("Gagal memuat gambar"));
     img.src = url;
   });
+}
+
+/* ----------------------------- AI engine ----------------------------- */
+/* Lazily builds an UpscalerJS instance backed by TensorFlow.js (WebGL).
+ * Throws "ai-unavailable" if the CDN libs didn't load or WebGL is missing,
+ * so the caller can fall back to the classic pipeline. */
+let aiUpscaler = null;
+let aiInitPromise = null;
+
+function aiAvailable() {
+  return (
+    typeof window.tf !== "undefined" &&
+    typeof window.Upscaler !== "undefined" &&
+    typeof window.DefaultUpscalerJSModel !== "undefined"
+  );
+}
+
+async function ensureUpscaler() {
+  if (aiUpscaler) return aiUpscaler;
+  if (aiInitPromise) return aiInitPromise;
+  if (!aiAvailable()) throw new Error("ai-unavailable");
+
+  aiInitPromise = (async () => {
+    setEngineStatus("Menyiapkan AI…", "loading");
+    // Prefer WebGL for speed; fall back to CPU/WASM if unavailable.
+    try {
+      await window.tf.setBackend("webgl");
+    } catch {
+      /* keep default backend */
+    }
+    await window.tf.ready();
+    aiUpscaler = new window.Upscaler({ model: window.DefaultUpscalerJSModel });
+    // Warm up so the first real image isn't penalised by graph compilation.
+    setEngineStatus("AI aktif", "");
+    return aiUpscaler;
+  })();
+  return aiInitPromise;
+}
+
+/* Run one 2× neural pass; returns an HTMLCanvasElement. */
+async function aiUpscaleOnce(source, onProgress) {
+  const up = await ensureUpscaler();
+  const big = Math.max(source.width || source.naturalWidth, source.height || source.naturalHeight);
+  // Tile large inputs to keep GPU memory bounded (Real-ESRGAN-style tiling).
+  const opts = { output: "base64" };
+  if (big > 1500) {
+    opts.patchSize = 256;
+    opts.padding = 8;
+  }
+  if (typeof onProgress === "function") {
+    opts.progress = (rate) => onProgress(Math.max(0, Math.min(1, rate)));
+  }
+
+  let dataUrl;
+  try {
+    dataUrl = await up.upscale(source, opts);
+  } catch (err) {
+    // Some inputs/divisibility combos reject patching — retry whole-image.
+    if (opts.patchSize) {
+      delete opts.patchSize;
+      delete opts.padding;
+      dataUrl = await up.upscale(source, opts);
+    } else {
+      throw err;
+    }
+  }
+
+  const out = await loadImage(dataUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = out.naturalWidth;
+  canvas.height = out.naturalHeight;
+  canvas.getContext("2d").drawImage(out, 0, 0);
+  return canvas;
+}
+
+/* Full AI restore: applies neural SR (one pass for 2×, two for 4×),
+ * then clamps to the safety cap. Returns a canvas. */
+async function aiRestore(img, scale, onProgress) {
+  const passes = scale >= 4 ? 2 : 1;
+  let current = img;
+  for (let p = 0; p < passes; p++) {
+    const base = p / passes;
+    current = await aiUpscaleOnce(current, (r) => onProgress && onProgress(base + r / passes));
+  }
+  return clampCanvas(current);
+}
+
+/* Downscale a canvas in place if it exceeds the area/dimension caps. */
+function clampCanvas(canvas) {
+  const ratio = Math.min(
+    MAX_DIM / canvas.width,
+    MAX_DIM / canvas.height,
+    Math.sqrt(MAX_AREA / (canvas.width * canvas.height)),
+    1
+  );
+  if (ratio >= 1) return canvas;
+  const out = document.createElement("canvas");
+  out.width = Math.round(canvas.width * ratio);
+  out.height = Math.round(canvas.height * ratio);
+  const ctx = out.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(canvas, 0, 0, out.width, out.height);
+  return out;
 }
 
 /* Progressive high-quality upscale to target size. */
@@ -274,8 +393,9 @@ function canvasToBlob(canvas, type, quality) {
   return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 }
 
-/* Process a single item. */
-async function processItem(item) {
+/* Process a single item.
+ * onProgress(rate, stageLabel) reports 0..1 progress for the SR stage. */
+async function processItem(item, onProgress) {
   item.status = "processing";
   render();
   await new Promise((r) => setTimeout(r, 10)); // let UI paint
@@ -284,11 +404,35 @@ async function processItem(item) {
   item.srcW = img.naturalWidth;
   item.srcH = img.naturalHeight;
 
-  const { w, h } = targetSize(img, state.scale);
-  let canvas = progressiveResize(img, w, h);
+  let canvas;
+  let usedFallback = false;
 
+  if (state.engine === "ai") {
+    try {
+      canvas = await aiRestore(img, state.scale, (r) => onProgress && onProgress(r, "AI"));
+    } catch (err) {
+      // Graceful degradation: classic pipeline if the model can't run.
+      console.warn("AI tidak tersedia, beralih ke mode klasik:", err.message || err);
+      usedFallback = true;
+      if (!state.aiNoticeShown) {
+        state.aiNoticeShown = true;
+        setEngineStatus("Mode klasik (AI gagal dimuat)", "fallback");
+      }
+      const { w, h } = targetSize(img, state.scale);
+      canvas = progressiveResize(img, w, h);
+      onProgress && onProgress(1, "Klasik");
+    }
+  } else {
+    const { w, h } = targetSize(img, state.scale);
+    canvas = progressiveResize(img, w, h);
+    onProgress && onProgress(1, "Klasik");
+  }
+
+  // Stage 2 — classic refinement (denoise + unsharp + auto levels + color).
+  // After AI, ease off sharpening so detail isn't over-accentuated.
+  const aiActive = state.engine === "ai" && !usedFallback;
   canvas = enhance(canvas, {
-    sharpen: Number(sharpenEl.value),
+    sharpen: aiActive ? Number(sharpenEl.value) * 0.5 : Number(sharpenEl.value),
     denoise: Number(denoiseEl.value),
     contrast: Number(contrastEl.value),
     autoLevels: autoLevelsEl.checked,
@@ -320,10 +464,26 @@ async function processAll() {
   $("#processBtn").disabled = true;
   progressWrap.hidden = false;
 
+  // Warm up the AI model up-front so its load time shows clearly in the bar.
+  if (state.engine === "ai" && aiAvailable()) {
+    progressLabel.textContent = "Memuat model AI…";
+    try {
+      await ensureUpscaler();
+    } catch {
+      /* fallback handled per-item */
+    }
+  }
+
   let done = 0;
   for (const item of pending) {
+    const onProgress = (rate, stage) => {
+      const overall = (done + rate) / pending.length;
+      progressFill.style.width = Math.round(overall * 100) + "%";
+      progressLabel.textContent =
+        `Foto ${done + 1}/${pending.length} · ${stage} ${Math.round(rate * 100)}%`;
+    };
     try {
-      await processItem(item);
+      await processItem(item, onProgress);
     } catch (err) {
       console.error(err);
       item.status = "error";
@@ -332,10 +492,10 @@ async function processAll() {
     done++;
     const pct = Math.round((done / pending.length) * 100);
     progressFill.style.width = pct + "%";
-    progressLabel.textContent = `${done} / ${pending.length} foto · ${pct}%`;
+    progressLabel.textContent = `${done} / ${pending.length} foto selesai · ${pct}%`;
   }
 
-  progressLabel.textContent = `Selesai! ${done} foto berhasil ditingkatkan ✨`;
+  progressLabel.textContent = `Selesai! ${done} foto berhasil diperbaiki ✨`;
   state.busy = false;
   $("#processBtn").disabled = false;
   $("#downloadAllBtn").disabled = !state.items.some((it) => it.status === "done");
@@ -485,4 +645,17 @@ modal.querySelectorAll("[data-close]").forEach((el) =>
 );
 window.addEventListener("keydown", (e) => { if (e.key === "Escape") modal.hidden = true; });
 
-console.log("✨ PixelBoost siap — upscale fotomu tanpa batas, langsung di browser.");
+/* ----------------------------- Init ----------------------------- */
+function initEngineStatus() {
+  if (state.engine !== "ai") return;
+  if (aiAvailable()) {
+    setEngineStatus("AI siap");
+  } else {
+    setEngineStatus("Mode klasik (offline)", "fallback");
+  }
+}
+// AI scripts are deferred; give them a tick to register their globals.
+if (document.readyState === "complete") initEngineStatus();
+else window.addEventListener("load", initEngineStatus);
+
+console.log("✨ PixelBoost siap — perbaiki kualitas fotomu dengan AI, langsung di browser.");

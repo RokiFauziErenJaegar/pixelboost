@@ -2,9 +2,9 @@
 
 # ✨ PixelBoost
 
-### Upscale &amp; perjelas **banyak foto sekaligus — tanpa batas**, langsung di browser.
+### Perbaiki kualitas **banyak foto sekaligus dengan AI** — langsung di browser.
 
-Tingkatkan resolusi hingga **8×**, pertajam detail, kurangi noise, dan buat warna lebih hidup.
+Buat foto buram jadi **jernih &amp; tajam**. AI **merekonstruksi detail yang hilang** (bukan sekadar memperbesar piksel), menghilangkan blur, noise, dan artefak JPEG — lalu disempurnakan dengan penajaman klasik.
 Semua diproses **100% di perangkatmu** — foto **tidak pernah** diupload ke server mana pun. 🔒
 
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
@@ -21,28 +21,47 @@ Semua diproses **100% di perangkatmu** — foto **tidak pernah** diupload ke ser
 
 | | Fitur | Keterangan |
 |---|---|---|
+| 🧠 | **Restorasi AI** | Model ESRGAN (TensorFlow.js) merekonstruksi detail &amp; menghilangkan buram — bukan sekadar memperbesar. |
 | ♾️ | **Tanpa batas** | Proses puluhan, ratusan, atau lebih foto sekaligus dalam satu antrean. |
-| 🔍 | **Upscale hingga 8×** | Pilih 2× / 3× / 4× / 6× / 8× sesuai kebutuhan. |
-| 🪄 | **Pipeline penjernih** | Progressive resampling + unsharp mask + auto-levels + boost warna. |
-| 🔒 | **100% privat** | Semua diproses di browser dengan Canvas — tanpa upload, tanpa server. |
+| 🔍 | **Perbesar 2× / 4×** | Naikkan resolusi sekaligus kualitas; gambar besar diproses per-tile agar hemat memori. |
+| ⚡ | **Mode Cepat** | Tanpa AI/internet — resampling kualitas tinggi + penajaman klasik, instan. |
+| 🔒 | **100% privat** | AI &amp; semua proses berjalan di browser — tanpa upload, tanpa server. |
 | 📦 | **Unduh massal** | Simpan semua hasil sekaligus dalam satu file `.zip`. |
 | 👁️ | **Bandingkan A/B** | Lihat perbedaan sebelum &amp; sesudah dengan slider. |
 | 🎨 | **UI modern** | Antarmuka gelap yang elegan, responsif, dan ringan. |
-| 🌐 | **Tanpa dependensi** | Tidak butuh `npm install` — cukup Node.js bawaan. |
 
 ---
 
 ## 🧠 Bagaimana Foto Menjadi Lebih Jelas?
 
-PixelBoost bukan sekadar memperbesar piksel. Setiap foto melewati **5 tahap penyempurnaan**:
+PixelBoost memakai pendekatan **restorasi citra dua tahap** yang berbasis riset:
 
-1. **Progressive Resampling** — gambar diperbesar bertahap (maksimal 2× tiap langkah) memakai resampler bicubic kualitas tinggi, sehingga hasilnya halus tanpa efek kotak-kotak.
-2. **Noise Reduction** — bintik &amp; grain dihaluskan dengan blur lembut yang adaptif.
-3. **Unsharp Masking** — tepi dan detail dipertegas kembali agar foto tampak tajam dan jelas.
-4. **Auto Levels** — histogram di-stretch otomatis supaya bagian gelap &amp; terang lebih seimbang.
-5. **Contrast &amp; Color Boost** — kontras dan saturasi ditingkatkan agar foto terlihat hidup.
+### Tahap 1 — Rekonstruksi detail dengan AI (Neural Super-Resolution)
+Model **GAN super-resolution** (keluarga **ESRGAN / Real-ESRGAN**) dijalankan langsung di browser via **TensorFlow.js** dengan akselerasi **WebGL**. Berbeda dengan interpolasi biasa yang hanya "menebak rata-rata" piksel, jaringan ini **menghasilkan (mensintesis) tekstur dan detail** yang konsisten secara perseptual — sehingga foto buram menjadi tajam dan terlihat alami. Gambar besar dipecah menjadi **tile** yang saling tumpang-tindih lalu dijahit kembali (teknik tiling Real-ESRGAN) agar tidak kehabisan memori GPU.
 
-> Hasilnya: foto yang **lebih besar, lebih tajam, dan lebih jelas** — semuanya dalam hitungan detik.
+### Tahap 2 — Penyempurnaan klasik (Post-processing)
+Hasil AI dirapikan dengan teknik baku pengolahan citra:
+1. **Noise Reduction** — menghaluskan bintik &amp; grain (edge-preserving).
+2. **Unsharp Masking** — mempertegas acutance/ketajaman tepi.
+3. **Auto Levels** — histogram di-stretch otomatis (mirip CLAHE) agar gelap–terang seimbang.
+4. **Contrast &amp; Color Boost** — kontras &amp; saturasi dinaikkan agar foto lebih hidup.
+
+> Hasilnya: foto yang **lebih jernih, lebih tajam, dan lebih berkualitas** — bukan sekadar lebih besar.
+
+---
+
+## 📚 Referensi Jurnal &amp; Metode
+
+Konsep PixelBoost berlandaskan literatur berikut:
+
+- **ESRGAN** — Wang et al., *"ESRGAN: Enhanced Super-Resolution Generative Adversarial Networks"*, ECCV Workshops 2018. [arXiv:1809.00219](https://arxiv.org/abs/1809.00219)
+- **Real-ESRGAN** — Wang et al., *"Real-ESRGAN: Training Real-World Blind Super-Resolution with Pure Synthetic Data"*, ICCV Workshops 2021. [arXiv:2107.10833](https://arxiv.org/abs/2107.10833)
+- **SRGAN** — Ledig et al., *"Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network"*, CVPR 2017. [arXiv:1609.04802](https://arxiv.org/abs/1609.04802)
+- **SRCNN** — Dong et al., *"Image Super-Resolution Using Deep Convolutional Networks"*, TPAMI 2016. [arXiv:1501.00092](https://arxiv.org/abs/1501.00092)
+- **CLAHE** — Zuiderveld, *"Contrast Limited Adaptive Histogram Equalization"*, Graphics Gems IV, 1994.
+- Mesin AI di browser: [UpscalerJS](https://upscalerjs.com) + [TensorFlow.js](https://www.tensorflow.org/js).
+
+> Catatan: untuk menjaga ukuran unduhan tetap ringan, build ini memakai model ESRGAN ringkas bawaan UpscalerJS. Arsitekturnya **pluggable** — model Real-ESRGAN/Real-CUGAN (ONNX/WebGPU) dapat dipasang untuk kualitas lebih tinggi.
 
 ---
 
@@ -63,7 +82,9 @@ npm start
 #   http://localhost:5173
 ```
 
-Lalu **tarik-lepas** foto-fotomu, atur faktor upscale &amp; ketajaman, klik **⚡ Upscale Semua**, dan unduh hasilnya! 🎉
+Lalu **tarik-lepas** foto-fotomu, pilih **mode perbaikan**, klik **✨ Perbaiki Semua**, dan unduh hasilnya! 🎉
+
+> ℹ️ Saat pertama memakai mode AI, model (±5&nbsp;MB) diunduh dari CDN lalu **disimpan di browser (IndexedDB)** sehingga pemakaian berikutnya bisa offline.
 
 ---
 
@@ -71,14 +92,14 @@ Lalu **tarik-lepas** foto-fotomu, atur faktor upscale &amp; ketajaman, klik **�
 
 | Kontrol | Fungsi |
 |---|---|
-| **Faktor Upscale** | Seberapa besar foto diperbesar (2×–8×). |
+| **Mode Perbaikan** | 🧠 AI 2× / AI 4× (restorasi neural) atau ⚡ Cepat 2× / 4× (klasik, tanpa internet). |
 | **Ketajaman** | Kekuatan unsharp mask untuk mempertegas detail. |
 | **Reduksi Noise** | Menghaluskan bintik &amp; grain pada foto. |
 | **Kontras &amp; Warna** | Membuat foto lebih hidup dan jelas. |
 | **Auto Levels** | Menyeimbangkan terang–gelap secara otomatis. |
 | **Format Hasil** | PNG (terbaik), JPG (ringan), atau WEBP (modern). |
 
-> ℹ️ Demi keamanan memori browser, ukuran keluaran dibatasi ~64 megapiksel per foto. Faktor upscale otomatis menyesuaikan bila melebihi batas.
+> ℹ️ Demi keamanan memori browser, ukuran keluaran dibatasi ~64 megapiksel per foto; faktor perbesaran otomatis menyesuaikan bila melebihi batas. Jika WebGL/AI tak tersedia, app otomatis beralih ke **Mode Cepat**.
 
 ---
 
@@ -86,9 +107,9 @@ Lalu **tarik-lepas** foto-fotomu, atur faktor upscale &amp; ketajaman, klik **�
 
 ```
 pixelboost/
-├── index.html     # Struktur halaman & UI
+├── index.html     # Struktur halaman, UI, & pemuatan pustaka AI (CDN)
 ├── style.css      # Tema gelap modern + animasi
-├── app.js         # Mesin upscale & enhancement (Canvas)
+├── app.js         # Mesin restorasi: AI (UpscalerJS/TF.js) + pipeline klasik
 ├── zip.js         # Penulis ZIP minimal (tanpa dependensi)
 ├── server.js      # Static server Node.js tanpa dependensi
 └── package.json
